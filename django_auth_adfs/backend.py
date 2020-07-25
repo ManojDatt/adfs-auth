@@ -14,7 +14,7 @@ logger = logging.getLogger("django_auth_adfs")
 
 class AdfsBaseBackend(ModelBackend):
     def exchange_auth_code(self, authorization_code, request):
-        logger.debug("Received authorization code: %s", authorization_code)
+        print("Received authorization code: %s", authorization_code)
         data = {
             'grant_type': 'authorization_code',
             'client_id': settings.CLIENT_ID,
@@ -24,7 +24,7 @@ class AdfsBaseBackend(ModelBackend):
         if settings.CLIENT_SECRET:
             data['client_secret'] = settings.CLIENT_SECRET
 
-        logger.debug("Getting access token at: %s", provider_config.token_endpoint)
+        print("Getting access token at: %s", provider_config.token_endpoint)
         response = provider_config.session.post(provider_config.token_endpoint, data, timeout=settings.TIMEOUT)
 
         # 200 = valid token received
@@ -86,7 +86,7 @@ class AdfsBaseBackend(ModelBackend):
         if not access_token:
             raise PermissionDenied
 
-        logger.debug("Received access token: %s", access_token)
+        print("Received access token: %s", access_token)
         claims = self.validate_access_token(access_token)
         if not claims:
             raise PermissionDenied
@@ -127,9 +127,9 @@ class AdfsBaseBackend(ModelBackend):
         except usermodel.DoesNotExist:
             if settings.CREATE_NEW_USERS:
                 user = usermodel.objects.create(**userdata)
-                logger.debug("User '%s' has been created.", claims[username_claim])
+                print("User '%s' has been created.", claims[username_claim])
             else:
-                logger.debug("User '%s' doesn't exist and creating users is disabled.", claims[username_claim])
+                print("User '%s' doesn't exist and creating users is disabled.", claims[username_claim])
                 raise PermissionDenied
         if not user.password:
             user.set_unusable_password()
@@ -150,7 +150,7 @@ class AdfsBaseBackend(ModelBackend):
             if hasattr(user, field):
                 if claim in claims:
                     setattr(user, field, claims[claim])
-                    logger.debug("Attribute '%s' for user '%s' was set to '%s'.", field, user, claims[claim])
+                    print("Attribute '%s' for user '%s' was set to '%s'.", field, user, claims[claim])
                 else:
                     if field in required_fields:
                         msg = "Claim not found in access token: '{}'. Check ADFS claims mapping."
@@ -180,7 +180,7 @@ class AdfsBaseBackend(ModelBackend):
                 if not isinstance(claim_groups, list):
                     claim_groups = [claim_groups, ]
             else:
-                logger.debug("The configured groups claim '%s' was not found in the access token",
+                print("The configured groups claim '%s' was not found in the access token",
                              settings.GROUPS_CLAIM)
                 claim_groups = []
 
@@ -196,17 +196,17 @@ class AdfsBaseBackend(ModelBackend):
             for group_name in groups_to_remove:
                 group = Group.objects.get(name=group_name)
                 user.groups.remove(group)
-                logger.debug("User removed from group '%s'", group_name)
+                print("User removed from group '%s'", group_name)
 
             for group_name in groups_to_add:
                 try:
                     if settings.MIRROR_GROUPS:
                         group, _ = Group.objects.get_or_create(name=group_name)
-                        logger.debug("Created group '%s'", group_name)
+                        print("Created group '%s'", group_name)
                     else:
                         group = Group.objects.get(name=group_name)
                     user.groups.add(group)
-                    logger.debug("User added to group '%s'", group_name)
+                    print("User added to group '%s'", group_name)
                 except ObjectDoesNotExist:
                     # Silently fail for non-existing groups.
                     pass
@@ -225,7 +225,7 @@ class AdfsBaseBackend(ModelBackend):
                 if not isinstance(access_token_groups, list):
                     access_token_groups = [access_token_groups, ]
             else:
-                logger.debug("The configured group claim was not found in the access token")
+                print("The configured group claim was not found in the access token")
                 access_token_groups = []
 
             for flag, group in settings.GROUP_TO_FLAG_MAPPING.items():
@@ -235,7 +235,7 @@ class AdfsBaseBackend(ModelBackend):
                     else:
                         value = False
                     setattr(user, flag, value)
-                    logger.debug("Attribute '%s' for user '%s' was set to '%s'.", user, flag, value)
+                    print("Attribute '%s' for user '%s' was set to '%s'.", user, flag, value)
                 else:
                     msg = "User model has no field named '{}'. Check ADFS boolean claims mapping."
                     raise ImproperlyConfigured(msg.format(flag))
@@ -246,7 +246,7 @@ class AdfsBaseBackend(ModelBackend):
                 if claim in claims and str(claims[claim]).lower() in ['y', 'yes', 't', 'true', 'on', '1']:
                     bool_val = True
                 setattr(user, field, bool_val)
-                logger.debug('Attribute "%s" for user "%s" was set to "%s".', user, field, bool_val)
+                print('Attribute "%s" for user "%s" was set to "%s".', user, field, bool_val)
             else:
                 msg = "User model has no field named '{}'. Check ADFS boolean claims mapping."
                 raise ImproperlyConfigured(msg.format(field))
@@ -264,7 +264,7 @@ class AdfsAuthCodeBackend(AdfsBaseBackend):
 
         # If there's no token or code, we pass control to the next authentication backend
         if authorization_code is None or authorization_code == '':
-            logger.debug("django_auth_adfs authentication backend was called but no authorization code was received")
+            print("django_auth_adfs authentication backend was called but no authorization code was received")
             return
 
         adfs_response = self.exchange_auth_code(authorization_code, request)
@@ -285,7 +285,7 @@ class AdfsAccessTokenBackend(AdfsBaseBackend):
 
         # If there's no token or code, we pass control to the next authentication backend
         if access_token is None or access_token == '':
-            logger.debug("django_auth_adfs authentication backend was called but no authorization code was received")
+            print("django_auth_adfs authentication backend was called but no authorization code was received")
             return
 
         access_token = access_token.decode()

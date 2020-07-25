@@ -291,7 +291,9 @@ class ProviderConfig(object):
 
     def redirect_uri(self, request):
         self.load_config()
-        return request.build_absolute_uri(reverse("django_auth_adfs:callback"), https=True)
+        url= request.build_absolute_uri(reverse("django_auth_adfs:callback"))
+        url= url.replace('http://', 'https://')
+        return url 
 
     def build_authorization_endpoint(self, request, disable_sso=None):
         """
